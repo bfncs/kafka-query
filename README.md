@@ -7,5 +7,5 @@ Query kafka topic contents by message key.
 1. Build application: `mvn clean verify`
 2. Start Kafka & Zookeeper: `docker compose up -d`
 3. Produce messages in compacted topic: `./produce-messages.sh`
-4. Start application: `java -jar target`
+4. Start application: `java -jar target/kafka-query-1.0-SNAPSHOT-jar-with-dependencies.jar`
 5. Query kafka topic contents by message key: `curl localhost:8080/<KEY>`
