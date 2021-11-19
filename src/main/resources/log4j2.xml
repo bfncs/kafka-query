@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn">
+    <Appenders>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+            <PatternLayout>
+                <Pattern>%highlight{%d{ISO8601_OFFSET_DATE_TIME_HH} [%5p] %logger{1.} - %msg%n%throwable}</Pattern>
+            </PatternLayout>
+        </Console>
+        <Async name="Async">
+            <AppenderRef ref="STDOUT" level="DEBUG"/>
+        </Async>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Async"/>
+        </Root>
+    </Loggers>
+</Configuration>
