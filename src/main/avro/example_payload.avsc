@@ -1,0 +1,30 @@
+{
+  "type": "record",
+  "namespace": "us.byteb.message",
+  "name": "ExamplePayload",
+  "fields": [
+    {
+      "name": "id",
+      "type": "int",
+      "doc": "32b integer identifier"
+    },
+    {
+      "name": "uuid",
+      "type": "string",
+      "logicalType": "UUID",
+      "doc": "36b UUID string representation"
+    },
+    {
+      "name": "type",
+      "type": {
+        "name": "EnumType",
+        "type": "enum",
+        "symbols": [ "FIRST_TYPE", "SECOND_TYPE" ]
+      }
+    },
+    {
+      "name": "isActive",
+      "type": "boolean"
+    }
+  ]
+}
