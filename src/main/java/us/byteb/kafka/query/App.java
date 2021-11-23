@@ -1,16 +1,12 @@
 package us.byteb.kafka.query;
 
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
+import static io.javalin.http.HttpCode.NOT_FOUND;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.javalin.Javalin;
 import io.javalin.http.HttpCode;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -19,11 +15,18 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
-import static io.javalin.http.HttpCode.NOT_FOUND;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+import java.util.stream.Collectors;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class App {
 
@@ -79,6 +82,24 @@ public final class App {
     try (final KafkaConsumer<String, GenericRecord> consumer =
         new KafkaConsumer<>(buildKafkaConsumerConfig(consumerGroupId))) {
       consumer.subscribe(List.of(KAFKA_TOPIC));
+
+      Executors.newSingleThreadScheduledExecutor()
+          .scheduleAtFixedRate(
+              () -> {
+                final Map<MetricName, ? extends Metric> metrics = consumer.metrics();
+
+                // This updates very slowly and „NaN“ means there is no lag 🤔
+
+                final String lags =
+                    metrics.entrySet().stream()
+                        .filter(m -> m.getKey().name().equals("records-lag-max"))
+                        .map(m -> m.getValue().metricName() + ": " + m.getValue().metricValue())
+                        .collect(Collectors.joining("\n"));
+                System.out.println(lags);
+              },
+              0,
+              2,
+              TimeUnit.SECONDS);
 
       while (true) {
         final ConsumerRecords<String, GenericRecord> records =
