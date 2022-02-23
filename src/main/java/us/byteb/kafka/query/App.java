@@ -1,16 +1,12 @@
 package us.byteb.kafka.query;
 
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
+import static io.javalin.http.HttpCode.NOT_FOUND;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.javalin.Javalin;
 import io.javalin.http.HttpCode;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,10 +16,12 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
-import static io.javalin.http.HttpCode.NOT_FOUND;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class App {
 
@@ -33,12 +31,18 @@ public final class App {
   private static final int KAFKA_MAX_POLL_RECORDS = 500;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
+  private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
 
   public static void main(String[] args) {
+    start(KAFKA_BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL);
+  }
+
+  static void start(final String kafkaBootstrapServers, final String schemaRegistryUrl) {
     final Map<String, GenericRecord> store = new ConcurrentHashMap<>();
     final AtomicBoolean isInitialized = new AtomicBoolean(false);
+
     initHttpServer(store, isInitialized);
-    runKafkaConsumer(store, isInitialized);
+    new Thread(() -> runKafkaConsumer(store, isInitialized, kafkaBootstrapServers, schemaRegistryUrl)).start();
   }
 
   private static void initHttpServer(
@@ -69,7 +73,9 @@ public final class App {
   }
 
   private static void runKafkaConsumer(
-      final Map<String, GenericRecord> store, final AtomicBoolean isInitialized) {
+      final Map<String, GenericRecord> store,
+      final AtomicBoolean isInitialized,
+      final String kafkaBootstrapServers, final String schemaRegistryUrl) {
     final String consumerGroupId = "kafka-query-" + UUID.randomUUID();
     LOGGER.info("Starting consumer with group id {}", consumerGroupId);
 
@@ -77,7 +83,7 @@ public final class App {
     BigInteger messagesReceived = BigInteger.ZERO;
 
     try (final KafkaConsumer<String, GenericRecord> consumer =
-        new KafkaConsumer<>(buildKafkaConsumerConfig(consumerGroupId))) {
+        new KafkaConsumer<>(buildKafkaConsumerConfig(consumerGroupId, kafkaBootstrapServers, schemaRegistryUrl))) {
       consumer.subscribe(List.of(KAFKA_TOPIC));
 
       while (true) {
@@ -106,16 +112,17 @@ public final class App {
     }
   }
 
-  private static Properties buildKafkaConsumerConfig(final String consumerGroupId) {
+  private static Properties buildKafkaConsumerConfig(
+      final String consumerGroupId, final String bootstrapServers, final String schemaRegistryUrl) {
     final Properties props = new Properties();
-    props.put(BOOTSTRAP_SERVERS_CONFIG, KAFKA_BOOTSTRAP_SERVERS);
+    props.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     props.put(GROUP_ID_CONFIG, consumerGroupId);
     props.put(ENABLE_AUTO_COMMIT_CONFIG, "false");
     props.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
     props.put(MAX_POLL_RECORDS_CONFIG, KAFKA_MAX_POLL_RECORDS);
     props.put(KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
     props.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-    props.put(SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
+    props.put(SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
 
     return props;
   }

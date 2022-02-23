@@ -14,5 +14,7 @@
         <Root level="INFO">
             <AppenderRef ref="Async"/>
         </Root>
+        <Logger name="org.apache.kafka" level="WARN" />
+        <Logger name="io.confluent.kafka" level="WARN" />
     </Loggers>
 </Configuration>

@@ -12,6 +12,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <confluent.kafka.version>7.0.0</confluent.kafka.version>
+        <avro.version>1.10.1</avro.version>
     </properties>
 
     <repositories>
@@ -48,10 +49,41 @@
             <artifactId>kafka-avro-serializer</artifactId>
             <version>${confluent.kafka.version}</version>
         </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.8.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <version>1.16.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.22.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -93,6 +125,23 @@
                         <googleJavaFormat/>
                     </java>
                 </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>avro-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/generated-sources/avro</outputDirectory>
+                            <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
+                        </configuration>
+                        <goals>
+                            <goal>schema</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                    </execution>
+                </executions>
+                <groupId>org.apache.avro</groupId>
+                <version>${avro.version}</version>
             </plugin>
         </plugins>
     </build>
